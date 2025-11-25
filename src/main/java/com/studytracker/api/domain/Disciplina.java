@@ -51,6 +51,8 @@ public class Disciplina {
     }
     
     public void adicionarTarefa(Tarefa tarefa) {
+        long novoId = (long) (this.tarefas.size() + 1);
+        tarefa.setId(novoId);
         this.tarefas.add(tarefa);
     }
 }

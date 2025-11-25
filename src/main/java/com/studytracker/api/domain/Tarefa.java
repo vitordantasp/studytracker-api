@@ -7,6 +7,7 @@ public class Tarefa {
     private String titulo;
     private LocalDate prazo;
     private StatusTarefa status;
+    private Long id;
     
     public Tarefa(String titulo, LocalDate prazo) {
         this.titulo = titulo;
@@ -26,7 +27,15 @@ public class Tarefa {
         return status;
     }
     
+    public Long getId() { 
+        return id; 
+    }
+
     public void setStatus(StatusTarefa status) {
         this.status = status;
+    }
+
+    public void setId(Long id) {
+        this.id = id; 
     }
 }
