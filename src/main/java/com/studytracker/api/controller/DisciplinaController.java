@@ -22,18 +22,12 @@ import java.util.List;
 @RequestMapping("/disciplinas")
 public class DisciplinaController {
 
-    // Simulação de Banco de Dados (igual fazíamos na Main antiga)
     private static List<Disciplina> disciplinas = new ArrayList<>();
-
-    // Um contador simples para gerar IDs (1, 2, 3...)
     private static long proximoId = 1;
 
-    // Construtor: Vamos criar dados falsos só pra testar se funciona
     public DisciplinaController() {
-       if (disciplinas.isEmpty()) {
-            // Criamos a disciplina
+       if (disciplinas.isEmpty()) { //teste
             Disciplina disciplina1 = new Disciplina("Java Web", "Prof. Josh");
-            // Setamos o ID e aumentamos o contador
             disciplina1.setId(proximoId++); 
             disciplinas.add(disciplina1);
 
@@ -122,7 +116,6 @@ public class DisciplinaController {
 
         // 3. Atualizar
         tarefaEncontrada.setStatus(novoStatus);
-
         return ResponseEntity.ok(tarefaEncontrada);
     }
 }
