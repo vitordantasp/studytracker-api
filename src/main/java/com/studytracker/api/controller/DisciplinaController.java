@@ -3,18 +3,14 @@ package com.studytracker.api.controller;
 import com.studytracker.api.domain.Disciplina;
 import com.studytracker.api.domain.StatusTarefa;
 import com.studytracker.api.domain.Tarefa;
+import com.studytracker.api.repository.DisciplinaRepository;
+import com.studytracker.api.repository.TarefaRepository;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.PostMapping; 
-import org.springframework.web.bind.annotation.RequestBody; 
+import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 // 1. O "Crachá" de Garçom: Avisa ao Spring que essa classe controla rotas web
 @RestController
@@ -22,100 +18,125 @@ import java.util.List;
 @RequestMapping("/disciplinas")
 public class DisciplinaController {
 
-    private static List<Disciplina> disciplinas = new ArrayList<>();
-    private static long proximoId = 1;
+    // 1. Declaramos quem a gente precisa (Dependências)
+    private final DisciplinaRepository disciplinaRepository;
+    private final TarefaRepository tarefaRepository;
 
-    public DisciplinaController() {
-       if (disciplinas.isEmpty()) { //teste
-            Disciplina disciplina1 = new Disciplina("Java Web", "Prof. Josh");
-            disciplina1.setId(proximoId++); 
-            disciplinas.add(disciplina1);
-
-            Disciplina disciplina2 = new Disciplina("Estrutura de Dados", "Prof. Knuth");
-            disciplina2.setId(proximoId++);
-            disciplinas.add(disciplina2);
-        }
+    // 2. Injeção via Construtor
+    // O Spring vê isso e diz: "Deixa comigo, vou passar as instâncias certas aqui".
+    public DisciplinaController(DisciplinaRepository disciplinaRepo, TarefaRepository tarefaRepository) {
+        this.disciplinaRepository = disciplinaRepo;
+        this.tarefaRepository = tarefaRepository;
     }
 
     // 3. O Verbo HTTP: Quando chegar um pedido GET (leitura), execute isso
     @GetMapping
     public List<Disciplina> listarTodas() {
-        return disciplinas;
+        // Antes: return disciplinas;
+        // Agora: Select * from disciplina
+        return disciplinaRepository.findAll();
     }
 
     // 4. O Verbo POST: Quando chegar um pedido de CRIAÇÃO
     @PostMapping
     public Disciplina criar(@RequestBody Disciplina novaDisciplina) {
-        // O Spring já criou o objeto 'novaDisciplina' com os dados do JSON que chegaram!
-        
-        // Antes de salvar na lista, a gente "carimba" o ID nela
-        novaDisciplina.setId(proximoId++);
-        
-        // Adicionamos na nossa lista em memória
-        disciplinas.add(novaDisciplina);
-        
-        // Retornamos o objeto criado para confirmar (padrão de API)
-        return novaDisciplina;
+        // Antes: disciplinas.add(novaDisciplina);
+        // Agora: Insert into disciplina ...
+        return disciplinaRepository.save(novaDisciplina);
     }
-
-    // Mapeamos uma sub-rota.
-    // Como a classe já tem @RequestMapping("/disciplinas"), aqui só colocamos o resto.
+    
     @PostMapping("/{id}/tarefas")
     public ResponseEntity<Object> adicionarTarefa(@PathVariable Long id, @RequestBody Tarefa novaTarefa) {
-        
-        // 1. Procurar a disciplina pelo ID na nossa lista
-        // (Lógica simples de busca linear, igual a do console)
-        Disciplina disciplinaEncontrada = null;
-        
-        for (Disciplina disciplina : disciplinas) {
-            if (disciplina.getId().equals(id)) {
-                disciplinaEncontrada = disciplina;
-                break;
-            }
-        }
+        // 1. Buscamos no banco pelo ID (SELECT * FROM disciplina WHERE id = ?)
+        Optional<Disciplina> disciplinaOpt = disciplinaRepository.findById(id);
 
-        // 2. Cenário Triste: Não achou a disciplina?
-        if (disciplinaEncontrada == null) {
-            // Retorna um erro 404 (Not Found)
+        // 2. Verificamos se a caixa está vazia (Não achou)
+        if (disciplinaOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
-        // 3. Cenário Feliz: Achou!
-        // Adicionamos a tarefa à disciplina
-        disciplinaEncontrada.adicionarTarefa(novaTarefa);
+        // 3. Pegamos a disciplina de dentro da caixa
+        Disciplina disciplina = disciplinaOpt.get();
+
+        // 4. Adicionamos a tarefa (Lógica da classe de Domínio)
+        disciplina.adicionarTarefa(novaTarefa);
         
-        // Retornamos a disciplina atualizada (ou apenas a tarefa) com status 200 OK
-        return ResponseEntity.ok(disciplinaEncontrada);
+        // 5. Salvamos a DISCIPLINA. 
+        // Como configuramos 'CascadeType.ALL' na entidade, o JPA percebe a tarefa nova e salva ela também!
+        disciplinaRepository.save(disciplina);
+
+        return ResponseEntity.ok(disciplina);
     }
 
     @PatchMapping("/{idDisciplina}/tarefas/{idTarefa}/status")
     public ResponseEntity<Object> atualizarStatus(
             @PathVariable Long idDisciplina,
             @PathVariable Long idTarefa,
-            @RequestBody StatusTarefa novoStatus) { // O Spring converte o texto "CONCLUIDA" pro Enum!
+            @RequestBody StatusTarefa novoStatus) {
 
-        // 1. Achar a Disciplina
-        Disciplina disciplinaEncontrada = null;
-        for (Disciplina disciplina : disciplinas) {
-            if (disciplina.getId().equals(idDisciplina)) {
-                disciplinaEncontrada = disciplina;
-                break;
-            }
+        // 1. Buscamos a Tarefa direto no banco (SELECT * FROM tarefa WHERE id = ?)
+        Optional<Tarefa> tarefaOpt = tarefaRepository.findById(idTarefa);
+
+        if (tarefaOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
         }
-        if (disciplinaEncontrada == null) return ResponseEntity.notFound().build();
 
-        // 2. Achar a Tarefa DENTRO da disciplina
-        Tarefa tarefaEncontrada = null;
-        for (Tarefa tarefa : disciplinaEncontrada.getTarefas()) {
-            if (tarefa.getId().equals(idTarefa)) {
-                tarefaEncontrada = tarefa;
-                break;
-            }
+        Tarefa tarefa = tarefaOpt.get();
+
+        // 2. Validação de Segurança (Opcional mas recomendada):
+        // Garantir que a tarefa realmente pertence à disciplina da URL
+        if (!tarefa.getDisciplina().getId().equals(idDisciplina)) {
+            return ResponseEntity.badRequest().body("Essa tarefa não pertence a essa disciplina!");
         }
-        if (tarefaEncontrada == null) return ResponseEntity.notFound().build();
 
-        // 3. Atualizar
-        tarefaEncontrada.setStatus(novoStatus);
-        return ResponseEntity.ok(tarefaEncontrada);
+        // 3. Atualizamos e Salvamos
+        tarefa.setStatus(novoStatus);
+        tarefaRepository.save(tarefa);
+
+        return ResponseEntity.ok(tarefa);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletarDisciplina(@PathVariable Long id) {
+        
+        // 1. Verificação rápida antes de tentar apagar
+        if (!disciplinaRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // 2. Apaga do banco
+        disciplinaRepository.deleteById(id);
+
+        // 3. Retorna 204 No Content
+        // É o padrão mundial para "Apaguei com sucesso e não tenho nada pra te mostrar de volta"
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{idDisciplina}/tarefas/{idTarefa}")
+    public ResponseEntity<Void> deletarTarefa(
+            @PathVariable Long idDisciplina,
+            @PathVariable Long idTarefa) {
+
+        // 1. Buscamos a tarefa no banco
+        Optional<Tarefa> tarefaOpt = tarefaRepository.findById(idTarefa);
+
+        if (tarefaOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Tarefa tarefa = tarefaOpt.get();
+
+        // 2. Validação de Segurança: 
+        // A tarefa existe, mas será que ela pertence à disciplina da URL?
+        // Se a tarefa 10 pertence a Matematica (ID 1) e tentarem deletar via /disciplinas/2/tarefas/10, barramos.
+        if (!tarefa.getDisciplina().getId().equals(idDisciplina)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        // 3. Deletamos a tarefa
+        tarefaRepository.delete(tarefa);
+
+        // 4. Retornamos 204 No Content (Sucesso sem corpo)
+        return ResponseEntity.noContent().build();
     }
 }
