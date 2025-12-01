@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
 
-@Entity // Vira tabela
+@Entity 
 public class Disciplina {
 
     @Id
@@ -28,12 +28,10 @@ public class Disciplina {
     }
 
     public void adicionarTarefa(Tarefa tarefa) {
-        // Agora precisamos vincular os dois lados!
-        tarefa.setDisciplina(this); // A tarefa precisa saber quem é o pai
-        this.tarefas.add(tarefa);   // O pai adiciona o filho na lista
+        tarefa.setDisciplina(this); 
+        this.tarefas.add(tarefa);   
     }
 
-    // --- Getters e Setters ---
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

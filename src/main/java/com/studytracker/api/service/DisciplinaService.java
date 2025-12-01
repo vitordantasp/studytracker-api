@@ -3,6 +3,7 @@ package com.studytracker.api.service;
 import com.studytracker.api.domain.Disciplina;
 import com.studytracker.api.dto.DisciplinaRequestDTO;
 import com.studytracker.api.dto.DisciplinaResponseDTO;
+import com.studytracker.api.exception.RecursoNaoEncontradoException;
 import com.studytracker.api.repository.DisciplinaRepository;
 import org.springframework.stereotype.Service;
 
@@ -19,16 +20,14 @@ public class DisciplinaService {
         this.repository = repository;
     }
 
-    // --- MÉTODOS DE NEGÓCIO ---
-
-    public List<DisciplinaResponseDTO> listarTodas() {
+    public List<DisciplinaResponseDTO> listarTodasDisciplinas() {
         // Busca as entidades no banco e converte para DTO usando Stream
         return repository.findAll().stream()
                 .map(DisciplinaResponseDTO::new)
                 .toList();
     }
 
-    public DisciplinaResponseDTO criar(DisciplinaRequestDTO dados) {
+    public DisciplinaResponseDTO adicionarDisciplina(DisciplinaRequestDTO dados) {
         // 1. Converte DTO (Entrada) -> Entity
         Disciplina novaDisciplina = new Disciplina();
         novaDisciplina.setNome(dados.nome());
@@ -41,9 +40,9 @@ public class DisciplinaService {
         return new DisciplinaResponseDTO(disciplinaSalva);
     }
 
-    public void deletar(Long id) {
+    public void deletarDisciplina(Long id) {
         if (!repository.existsById(id)) {
-            throw new RuntimeException("Disciplina não encontrada!");
+            throw new RecursoNaoEncontradoException("Disciplina não encontrada!");
         }
         repository.deleteById(id);
     }
